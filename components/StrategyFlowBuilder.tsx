@@ -13,6 +13,7 @@ interface StrategyFlowBuilderProps {
   onMoveNode: (nodeId: string, x: number, y: number) => void;
   canvasOffset: { x: number, y: number };
   zoom: number;
+  sceneMode: 'space' | 'brain';
 }
 
 const ACTION_OPTIONS: { type: ProgressionType, label: string }[] = [
@@ -93,6 +94,7 @@ interface NodeCardProps {
     onCreateNode: (parentId: string, type: 'win' | 'loss', initialData?: Partial<StrategyNode>, openTable?: boolean) => void;
     onOpenTable: (nodeId: string) => void;
     onStartDrag: (e: React.MouseEvent, nodeId: string) => void;
+    sceneMode: 'space' | 'brain';
 }
 
 // --- Helper for Payout Estimation ---
@@ -194,7 +196,8 @@ const NodeCard: React.FC<NodeCardProps> = ({
     onUpdateNode,
     onCreateNode,
     onOpenTable,
-    onStartDrag
+    onStartDrag,
+    sceneMode
 }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -307,7 +310,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
         }
     };
 
-    // Header Editing Handlers
+    // Header Edit State
     const defaultHeaderText = !isValid && !isRoot ? 'NEEDS ATTENTION' : (isRoot ? 'Start Sequence' : (branchType === 'win' ? 'On Win' : 'On Loss'));
     const currentTitle = node.title || defaultHeaderText;
 
@@ -339,31 +342,64 @@ const NodeCard: React.FC<NodeCardProps> = ({
         e.stopPropagation(); // Prevent other hotkeys
     };
 
-    let borderColor = 'border-[3px] border-gray-500 shadow-[0_0_20px_rgba(107,114,128,0.4)]'; 
+    // --- Dynamic Styling Based on Scene Mode ---
+    const isBrain = sceneMode === 'brain';
+    const borderRadiusClass = isBrain ? 'rounded-[2rem]' : 'rounded-xl';
 
-    if (!isValid && !isRoot) {
-        borderColor = 'border-[3px] animate-fast-flash shadow-[0_0_30px_red]';
-    } else if (isResetLoop) {
-        borderColor = 'border-[3px] border-gray-700 bg-gray-900'; 
-    } else if (isFullySet) {
-        if (branchType === 'win') borderColor = 'border-[3px] border-green-800/60 shadow-[0_0_10px_rgba(74,222,128,0.1)]';
-        else if (branchType === 'loss') borderColor = 'border-[3px] border-red-800/60 shadow-[0_0_10px_rgba(248,113,113,0.1)]';
-        else if (isRoot) borderColor = 'border-[3px] border-yellow-800/60 shadow-[0_0_10px_rgba(250,204,21,0.1)]';
+    let borderColor = '';
+    
+    if (isBrain) {
+        // Brain Mode: Purple/Pink Organic Styling
+        if (!isValid && !isRoot) {
+            borderColor = 'border-[3px] border-red-500 shadow-[0_0_30px_#ef4444] animate-pulse';
+        } else if (isResetLoop) {
+             borderColor = 'border-[3px] border-slate-700 bg-slate-900';
+        } else if (isFullySet) {
+             if (branchType === 'win') borderColor = 'border-[3px] border-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.3)]';
+             else if (branchType === 'loss') borderColor = 'border-[3px] border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.3)]';
+             else if (isRoot) borderColor = 'border-[3px] border-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.4)]';
+        } else {
+             if (branchType === 'win') borderColor = 'border-[3px] border-fuchsia-400 shadow-[0_0_35px_rgba(232,121,249,0.8)]';
+             else if (branchType === 'loss') borderColor = 'border-[3px] border-violet-400 shadow-[0_0_35px_rgba(167,139,250,0.8)]';
+             else if (isRoot) borderColor = 'border-[4px] border-white shadow-[0_0_50px_rgba(255,255,255,0.6)]';
+        }
     } else {
-        if (branchType === 'win') borderColor = 'border-[3px] border-green-400 shadow-[0_0_35px_rgba(74,222,128,0.9)]';
-        else if (branchType === 'loss') borderColor = 'border-[3px] border-red-400 shadow-[0_0_35px_rgba(248,113,113,0.9)]';
-        else if (isRoot) borderColor = 'border-[3px] border-yellow-400 shadow-[0_0_35px_rgba(250,204,21,0.9)]';
+        // Space Mode: Original Mechanical/Tech Styling
+        borderColor = 'border-[3px] border-gray-500 shadow-[0_0_20px_rgba(107,114,128,0.4)]'; 
+
+        if (!isValid && !isRoot) {
+            borderColor = 'border-[3px] animate-fast-flash shadow-[0_0_30px_red]';
+        } else if (isResetLoop) {
+            borderColor = 'border-[3px] border-gray-700 bg-gray-900'; 
+        } else if (isFullySet) {
+            if (branchType === 'win') borderColor = 'border-[3px] border-green-800/60 shadow-[0_0_10px_rgba(74,222,128,0.1)]';
+            else if (branchType === 'loss') borderColor = 'border-[3px] border-red-800/60 shadow-[0_0_10px_rgba(248,113,113,0.1)]';
+            else if (isRoot) borderColor = 'border-[3px] border-yellow-800/60 shadow-[0_0_10px_rgba(250,204,21,0.1)]';
+        } else {
+            if (branchType === 'win') borderColor = 'border-[3px] border-green-400 shadow-[0_0_35px_rgba(74,222,128,0.9)]';
+            else if (branchType === 'loss') borderColor = 'border-[3px] border-red-400 shadow-[0_0_35px_rgba(248,113,113,0.9)]';
+            else if (isRoot) borderColor = 'border-[3px] border-yellow-400 shadow-[0_0_35px_rgba(250,204,21,0.9)]';
+        }
     }
 
-    const subNodeBorderColor = borderColor.replace('border-[3px]', 'border-[2px]').replace(/shadow-\[.*\]/, '');
+    const subNodeBorderColor = borderColor.replace('border-[3px]', 'border-[2px]').replace('border-[4px]', 'border-[2px]').replace(/shadow-\[.*\]/, '');
 
     let headerBg = 'bg-gray-800';
     let headerText = 'text-gray-300';
-    if (!isValid && !isRoot) { headerBg = 'bg-red-900'; headerText = 'text-white font-bold animate-pulse'; }
-    else if (isResetLoop) { headerBg = 'bg-gray-800'; headerText = 'text-gray-500'; }
-    else if (branchType === 'win') { headerBg = 'bg-green-900/40'; headerText = 'text-green-300'; }
-    else if (branchType === 'loss') { headerBg = 'bg-red-900/40'; headerText = 'text-red-300'; }
-    else if (isRoot) { headerBg = 'bg-yellow-900/30'; headerText = 'text-yellow-400'; }
+    
+    if (isBrain) {
+         if (!isValid && !isRoot) { headerBg = 'bg-red-900'; headerText = 'text-white font-bold animate-pulse'; }
+         else if (isResetLoop) { headerBg = 'bg-slate-800'; headerText = 'text-slate-500'; }
+         else if (branchType === 'win') { headerBg = 'bg-fuchsia-900/60'; headerText = 'text-fuchsia-200'; }
+         else if (branchType === 'loss') { headerBg = 'bg-violet-900/60'; headerText = 'text-violet-200'; }
+         else if (isRoot) { headerBg = 'bg-purple-900/60'; headerText = 'text-purple-100'; }
+    } else {
+         if (!isValid && !isRoot) { headerBg = 'bg-red-900'; headerText = 'text-white font-bold animate-pulse'; }
+         else if (isResetLoop) { headerBg = 'bg-gray-800'; headerText = 'text-gray-500'; }
+         else if (branchType === 'win') { headerBg = 'bg-green-900/40'; headerText = 'text-green-300'; }
+         else if (branchType === 'loss') { headerBg = 'bg-red-900/40'; headerText = 'text-red-300'; }
+         else if (isRoot) { headerBg = 'bg-yellow-900/30'; headerText = 'text-yellow-400'; }
+    }
 
     return (
         <div 
@@ -377,13 +413,13 @@ const NodeCard: React.FC<NodeCardProps> = ({
             onMouseDown={(e) => onStartDrag(e, node.id)}
         >
              {!isRoot && (
-                <div className={`absolute top-[40px] -left-2 w-4 h-4 rounded-full border-2 border-[#1a1a1a] z-20 ${branchType === 'win' ? 'bg-green-400 shadow-[0_0_15px_#4ade80]' : (branchType === 'loss' ? 'bg-red-400 shadow-[0_0_15px_#f87171]' : 'bg-gray-400')}`} />
+                <div className={`absolute top-[40px] -left-2 w-4 h-4 rounded-full border-2 border-[#1a1a1a] z-20 ${branchType === 'win' ? (isBrain ? 'bg-fuchsia-400 shadow-[0_0_15px_#e879f9]' : 'bg-green-400 shadow-[0_0_15px_#4ade80]') : (branchType === 'loss' ? (isBrain ? 'bg-violet-400 shadow-[0_0_15px_#a78bfa]' : 'bg-red-400 shadow-[0_0_15px_#f87171]') : 'bg-gray-400')}`} />
             )}
             
             {!isResetLoop && (
                 <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur px-3 py-1.5 rounded-full border border-gray-700 shadow-lg whitespace-nowrap z-10">
                     <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">Sim Bankroll</span>
-                    <span className="font-mono font-bold text-2xl text-green-400">${simulatedBankroll}</span>
+                    <span className={`font-mono font-bold text-2xl ${isBrain ? 'text-fuchsia-300' : 'text-green-400'}`}>${simulatedBankroll}</span>
                 </div>
             )}
 
@@ -420,7 +456,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
                 </div>
             )}
 
-            <div className={`w-full flex flex-col bg-[#1a1a1a] ${borderColor} rounded-xl overflow-hidden relative z-10`}>
+            <div className={`w-full flex flex-col bg-[#1a1a1a] ${borderColor} ${borderRadiusClass} overflow-hidden relative z-10`}>
                 <div className={`w-full p-2 text-center border-b border-white/10 ${headerBg}`}>
                     {isEditingHeader ? (
                          <input 
@@ -463,7 +499,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
                                     </span>
                                     
                                     {!isWaitNode && (hasBets || activeBetAmount > 0) ? (
-                                        <div className="text-green-400 font-mono font-bold text-lg text-center drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                                        <div className={`${isBrain ? 'text-fuchsia-300' : 'text-green-400'} font-mono font-bold text-lg text-center drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]`}>
                                             ${activeBetAmount}
                                         </div>
                                     ) : (
@@ -554,7 +590,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
                             <div className="flex gap-3">
                                 <button 
                                     onClick={handleBetClick}
-                                    className="flex-1 py-2 rounded-lg flex flex-col items-center justify-center gap-1 transition-all border-[2px] shadow-lg text-white bg-gray-800 border-green-500 hover:bg-gray-700 hover:border-green-400 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]"
+                                    className={`flex-1 py-2 rounded-lg flex flex-col items-center justify-center gap-1 transition-all border-[2px] shadow-lg text-white bg-gray-800 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] ${isBrain ? 'border-fuchsia-500 hover:bg-fuchsia-900/40 hover:border-fuchsia-400' : 'border-green-500 hover:bg-gray-700 hover:border-green-400'}`}
                                     onMouseDown={(e) => e.stopPropagation()}
                                 >
                                     <span className="text-[9px] font-black uppercase tracking-tight text-white drop-shadow-md">BET</span>
@@ -564,7 +600,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
                                     <button 
                                         ref={buttonRef}
                                         onClick={() => setShowMenu(!showMenu)}
-                                        className="w-full h-full py-2 rounded-lg flex flex-col items-center justify-center gap-1 transition-all border-[2px] shadow-lg bg-gray-800 border-yellow-500 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] hover:bg-gray-700 hover:border-yellow-400"
+                                        className={`w-full h-full py-2 rounded-lg flex flex-col items-center justify-center gap-1 transition-all border-[2px] shadow-lg bg-gray-800 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] ${isBrain ? 'border-violet-500 hover:bg-violet-900/40 hover:border-violet-400' : 'border-yellow-500 hover:bg-gray-700 hover:border-yellow-400'}`}
                                         onMouseDown={(e) => e.stopPropagation()}
                                     >
                                         <span className="text-[9px] font-black uppercase tracking-tight text-white drop-shadow-md">ACTION</span>
@@ -591,7 +627,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
 
                     <div className="flex justify-between items-center relative z-20 px-1 border-b border-white/10 pb-1">
                          <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Next Step</span>
-                         <span className={`font-mono font-bold text-sm ${activeBetAmount > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                         <span className={`font-mono font-bold text-sm ${activeBetAmount > 0 ? (isBrain ? 'text-fuchsia-400' : 'text-green-400') : 'text-gray-400'}`}>
                              {activeBetAmount > 0 ? `$${activeBetAmount}` : subActionLabel}
                          </span>
                     </div>
@@ -617,7 +653,7 @@ const NodeCard: React.FC<NodeCardProps> = ({
             )}
 
             {!isResetLoop && (
-                <div className="absolute top-[40px] -right-2 w-4 h-4 rounded-full bg-white border-4 border-[#1a1a1a] z-20 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                <div className={`absolute top-[40px] -right-2 w-4 h-4 rounded-full bg-white border-4 border-[#1a1a1a] z-20 ${isBrain ? 'shadow-[0_0_15px_white]' : 'shadow-[0_0_10px_rgba(255,255,255,0.5)]'}`} />
             )}
         </div>
     );
@@ -631,7 +667,8 @@ const StrategyFlowBuilder: React.FC<StrategyFlowBuilderProps> = ({
     onOpenTable, 
     onMoveNode, 
     canvasOffset,
-    zoom
+    zoom,
+    sceneMode
 }) => {
     useEffect(() => {
         if (!document.getElementById('flash-style')) {
@@ -922,6 +959,8 @@ const StrategyFlowBuilder: React.FC<StrategyFlowBuilderProps> = ({
         document.removeEventListener('mouseup', handleNodeMouseUp);
     };
 
+    const isBrain = sceneMode === 'brain';
+
     return (
         <div 
             className="w-full h-full relative pointer-events-none" 
@@ -934,6 +973,8 @@ const StrategyFlowBuilder: React.FC<StrategyFlowBuilderProps> = ({
                 <defs>
                     <filter id="glow-green"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                     <filter id="glow-red"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    <filter id="glow-fuchsia"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    <filter id="glow-violet"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                 </defs>
                 {connList.map(conn => {
                     const sx = conn.startX + 120 + 5000;
@@ -959,8 +1000,16 @@ const StrategyFlowBuilder: React.FC<StrategyFlowBuilderProps> = ({
 
                     const pathD = `M ${sx} ${sy} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${ex} ${ey}`;
                     
-                    const color = conn.type === 'win' ? '#4ade80' : '#f87171';
-                    const glow = conn.type === 'win' ? 'url(#glow-green)' : 'url(#glow-red)';
+                    let color = '';
+                    let glow = '';
+                    
+                    if (isBrain) {
+                        color = conn.type === 'win' ? '#d946ef' : '#8b5cf6'; // Fuchsia / Violet
+                        glow = conn.type === 'win' ? 'url(#glow-fuchsia)' : 'url(#glow-violet)';
+                    } else {
+                        color = conn.type === 'win' ? '#4ade80' : '#f87171'; // Green / Red
+                        glow = conn.type === 'win' ? 'url(#glow-green)' : 'url(#glow-red)';
+                    }
                     
                     const effectiveIsTerminal = isStrategyComplete ? true : conn.isTerminal;
                     const effectiveIsComplete = isStrategyComplete ? true : conn.isComplete;
@@ -1010,6 +1059,7 @@ const StrategyFlowBuilder: React.FC<StrategyFlowBuilderProps> = ({
                     onCreateNode={onCreateNode}
                     onOpenTable={onOpenTable}
                     onStartDrag={handleNodeDragStart}
+                    sceneMode={sceneMode}
                 />
             ))}
         </div>

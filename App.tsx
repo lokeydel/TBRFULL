@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { PlacedBet, SimulationStats, SimulationStep, StrategyConfig, SimConfig, StrategyNode, ProgressionType, SavedStrategy, SimSpeed } from './types';
 import TableModal from './components/TableModal';
@@ -152,8 +153,8 @@ const VolumetricRays = () => (
     </div>
 );
 
-const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
-  // Static Stars
+const BackgroundEffects = ({ glowTrigger, sceneMode }: { glowTrigger: number, sceneMode: 'space' | 'brain' }) => {
+  // Static Stars (Only for Space Mode)
   const stars = useMemo(() => Array.from({ length: 400 }).map((_, i) => ({
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
@@ -161,6 +162,42 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
     opacity: Math.random() * 0.5 + 0.3,
     delay: `${Math.random() * 4}s`
   })), []);
+
+  // BRAIN MODE: Generate Neural Network
+  const { neurons, synapses } = useMemo(() => {
+    // Generate Neurons
+    const nodeCount = 50; // Increased density for close-up feel
+    const nodes = [];
+    for (let i = 0; i < nodeCount; i++) {
+        nodes.push({
+            id: i,
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            size: 3 + Math.random() * 5, // Varied sizes for organic feel
+            pulseRate: 2 + Math.random() * 4 // Random pulse duration
+        });
+    }
+
+    // Generate Synapses (Connections between close neurons)
+    const connections = [];
+    for (let i = 0; i < nodeCount; i++) {
+        for (let j = i + 1; j < nodeCount; j++) {
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            // Calculate distance in approximate % units
+            const dist = Math.sqrt(dx * dx + dy * dy); 
+            // Connect if reasonably close (creates clusters)
+            if (dist < 18) { 
+                 connections.push({
+                     id: `${i}-${j}`,
+                     start: nodes[i],
+                     end: nodes[j]
+                 });
+            }
+        }
+    }
+    return { neurons: nodes, synapses: connections };
+  }, []);
 
   // Shooting Star State
   const [shootingStar, setShootingStar] = useState<{ id: number, top: string, left: string, angle: number, duration: string } | null>(null);
@@ -191,6 +228,8 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
 
   // Shooting Star Logic
   useEffect(() => {
+    if (sceneMode !== 'space') return; // Only in space
+
     const scheduleShootingStar = () => {
         // Random interval approx 4 minutes (240000ms) +/- 30s
         const nextDelay = 240000 + (Math.random() * 60000) - 30000; 
@@ -235,10 +274,12 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
     }, 5000); // First star after 5s
 
     return () => clearTimeout(initialTimer);
-  }, []);
+  }, [sceneMode]);
 
   // UFO Logic (Every ~6 minutes)
   useEffect(() => {
+      if (sceneMode !== 'space') return;
+
       const scheduleUfo = () => {
           // 6 minutes = 360000ms. Add some variance.
           const delay = 360000 + (Math.random() * 60000); 
@@ -267,7 +308,7 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
       // Start the loop
       const initialUfo = scheduleUfo();
       return () => clearTimeout(initialUfo);
-  }, []);
+  }, [sceneMode]);
 
 
   // Ambient Ships (Visual Only)
@@ -333,15 +374,120 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0 bg-black">
       
-      {/* Deep Space Background */}
-      <div className="absolute inset-0 bg-[#050011]" /> {/* Dark Purple Tinted Black */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1e1b4b_0%,#020617_100%)] opacity-80" />
+      {/* SPACE MODE BACKGROUND */}
+      {sceneMode === 'space' && (
+         <>
+             <div className="absolute inset-0 bg-[#050011]" /> 
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1e1b4b_0%,#020617_100%)] opacity-80" />
+             <VolumetricRays />
+         </>
+      )}
 
-      {/* Volumetric Light Rays */}
-      <VolumetricRays />
+      {/* BRAIN MODE BACKGROUND */}
+      {sceneMode === 'brain' && (
+         <div className="absolute inset-0 animate-drift-slow overflow-hidden">
+             {/* Deep Organic Background */}
+             <div className="absolute inset-0 bg-[#080214]" />
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#2e003b_0%,#080214_80%)] opacity-60" />
+             
+             {/* Synapse Layer (SVG) */}
+             <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                <defs>
+                     <filter id="glow-synapse" x="-50%" y="-50%" width="200%" height="200%">
+                         <feGaussianBlur stdDeviation="0.4" result="blur" />
+                         <feMerge>
+                             <feMergeNode in="blur" />
+                             <feMergeNode in="SourceGraphic" />
+                         </feMerge>
+                     </filter>
+                     {/* Gradient for Lines */}
+                     <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#4c1d95" stopOpacity="0.1" />
+                        <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.1" />
+                     </linearGradient>
+                </defs>
+                {synapses.map((syn, i) => (
+                    <g key={syn.id}>
+                        {/* Static Connection Line */}
+                        <line 
+                            x1={syn.start.x} y1={syn.start.y} 
+                            x2={syn.end.x} y2={syn.end.y} 
+                            stroke="url(#lineGrad)" 
+                            strokeWidth="0.15" 
+                        />
+                        {/* Firing Impulse - Activity */}
+                        {/* Only animate a subset to prevent visual chaos */}
+                        {i % 4 === 0 && (
+                             <circle r="0.3" fill="#e879f9" filter="url(#glow-synapse)">
+                                <animateMotion 
+                                    dur={`${2 + Math.random() * 5}s`}
+                                    repeatCount="indefinite"
+                                    // Use path attribute for smooth interpolation
+                                    path={`M ${syn.start.x} ${syn.start.y} L ${syn.end.x} ${syn.end.y}`}
+                                    keyPoints="0;1"
+                                    keyTimes="0;1"
+                                    calcMode="linear"
+                                />
+                             </circle>
+                        )}
+                        {/* Reverse Impulse */}
+                        {i % 7 === 0 && (
+                             <circle r="0.2" fill="#22d3ee" filter="url(#glow-synapse)">
+                                <animateMotion 
+                                    dur={`${3 + Math.random() * 4}s`}
+                                    repeatCount="indefinite"
+                                    path={`M ${syn.end.x} ${syn.end.y} L ${syn.start.x} ${syn.start.y}`}
+                                    keyPoints="0;1"
+                                    keyTimes="0;1"
+                                    calcMode="linear"
+                                />
+                             </circle>
+                        )}
+                    </g>
+                ))}
+             </svg>
 
-      {/* Static Stars with Twinkle */}
-      {stars.map((s, i) => (
+             {/* Neurons (DOM Elements for easy glow/pulse) */}
+             {neurons.map(n => (
+                 <div 
+                    key={n.id}
+                    className="absolute rounded-full bg-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.6)] animate-pulse"
+                    style={{
+                        left: `${n.x}%`,
+                        top: `${n.y}%`,
+                        width: `${n.size}px`,
+                        height: `${n.size}px`,
+                        transform: 'translate(-50%, -50%)', // Center on coordinate
+                        animationDuration: `${n.pulseRate}s`,
+                        opacity: 0.8
+                    }}
+                 >
+                    {/* Inner Core */}
+                    <div className="absolute inset-[20%] bg-white rounded-full opacity-60" />
+                 </div>
+             ))}
+
+             {/* Floating Dust Particles for Depth */}
+             {Array.from({length: 20}).map((_, i) => (
+                 <div 
+                    key={i}
+                    className="absolute rounded-full bg-violet-400 blur-[1px] opacity-20 animate-float"
+                    style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        width: `${2 + Math.random() * 4}px`,
+                        height: `${2 + Math.random() * 4}px`,
+                        animationDuration: `${10 + Math.random() * 20}s`,
+                        animationDelay: `-${Math.random() * 10}s`
+                    }}
+                 />
+             ))}
+         </div>
+      )}
+
+      {/* Static Stars (SPACE MODE ONLY) */}
+      {sceneMode === 'space' && stars.map((s, i) => (
         <div
           key={i}
           className="absolute bg-white rounded-full animate-twinkle"
@@ -352,282 +498,266 @@ const BackgroundEffects = ({ glowTrigger }: { glowTrigger: number }) => {
             height: s.size,
             opacity: s.opacity,
             animationDelay: s.delay,
-            animationDuration: `${2 + Math.random() * 3}s` // Randomize twinkle speed
+            animationDuration: `${2 + Math.random() * 3}s` 
           }}
         />
       ))}
 
-      {/* Shooting Star */}
-      {shootingStar && (
-        <div 
-            className="absolute h-[2px] w-[200px] bg-gradient-to-r from-transparent via-white to-transparent z-10"
-            style={{
-                top: shootingStar.top,
-                left: shootingStar.left,
-                transform: `rotate(${shootingStar.angle}deg)`,
-                animation: `shootingStar ${shootingStar.duration} linear forwards`,
-                boxShadow: '0 0 10px rgba(255,255,255,0.8)'
-            }}
-        />
-      )}
-
-      {/* UFO Flyby */}
-      {ufoActive && ufoConfig && (
-          <div 
-            className={`absolute z-20 ${ufoConfig.type === 'return' ? 'animate-ufo-return' : 'animate-ufo-flyby'}`}
-            style={{
-                '--ufo-start-y': `${ufoConfig.startY}vh`,
-                '--ufo-end-y': `${ufoConfig.endY}vh`,
-            } as React.CSSProperties}
-          >
-              <div className="relative w-28 h-8"> {/* Halved Size: w-28 h-8 (from w-56 h-14) */}
-                   {/* Glass Dome - Scaled down */}
-                   <div className="absolute top-[-8px] left-1/2 -translate-x-1/2 w-12 h-5 bg-cyan-200/40 rounded-t-full border border-white/30 backdrop-blur-[1px] overflow-hidden z-10">
-                       {/* THE ALIEN DRIVER - Scaled down */}
-                       <div className="absolute bottom-[1px] left-1/2 -translate-x-1/2 w-5 h-5 flex flex-col items-center justify-end animate-pulse" style={{ animationDuration: '3s' }}>
-                           {/* Head */}
-                           <div className="w-2.5 h-3 bg-[#4ade80] rounded-[50%_50%_70%_70%] shadow-[0_0_3px_#22c55e] relative z-20">
-                               {/* Big Black Eyes */}
-                               <div className="absolute top-[35%] left-[0px] w-1.5 h-1.5 bg-black rounded-[60%_40%_40%_40%] -rotate-[30deg] shadow-[inset_1px_1px_1px_rgba(255,255,255,0.6)]" />
-                               <div className="absolute top-[35%] right-[0px] w-1.5 h-1.5 bg-black rounded-[40%_60%_40%_40%] rotate-[30deg] shadow-[inset_-1px_1px_1px_rgba(255,255,255,0.6)]" />
-                           </div>
-                           
-                           {/* Skinny Neck */}
-                           <div className="w-0.5 h-1 bg-[#4ade80] -mt-0.5 z-10" />
-
-                           {/* Shoulders */}
-                           <div className="w-4 h-1.5 bg-green-700 rounded-t-full -mt-0.5 z-10" />
-                       </div>
-                   </div>
-
-                   {/* VOLUMETRIC BEAMS LAYER (Behind Body) - Adjusted for Flat Ends */}
-                   <div className="absolute top-[50%] -left-[10%] w-[120%] h-40 overflow-hidden z-0" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
-                        <div className="w-[200%] h-full flex gap-2 animate-ufo-lights-spin pl-1">
-                            {Array.from({length: 20}).map((_, i) => (
-                                <div key={i} className="w-3 relative flex justify-center">
-                                    <div className={`w-8 h-32 bg-gradient-to-b ${i % 3 === 0 ? 'from-red-500/40' : (i % 3 === 1 ? 'from-green-500/40' : 'from-blue-500/40')} to-transparent blur-md origin-top transform -rotate-6`} />
-                                </div>
-                            ))}
-                        </div>
-                   </div>
-                   
-                   {/* METALLIC BODY (Octagonal Shape - Flat Ends) */}
-                   <div 
-                        className="absolute inset-0 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-800 shadow-2xl border border-gray-500 flex items-center z-20"
-                        style={{ 
-                            // Octagon-ish shape with vertical flat ends at the waist
-                            clipPath: 'polygon(15% 0%, 85% 0%, 100% 30%, 100% 70%, 85% 100%, 15% 100%, 0% 70%, 0% 30%)'
-                        }}
-                   >
-                        {/* Rotating Lights Strip - Visible on the flat vertical sides now */}
-                        <div className="w-[200%] h-1.5 flex gap-3 animate-ufo-lights-spin mt-0.5">
-                            {Array.from({length: 20}).map((_, i) => (
-                                <div key={i} className={`w-2 h-2 rounded-full ${i % 3 === 0 ? 'bg-red-500' : (i % 3 === 1 ? 'bg-green-500' : 'bg-blue-500')} shadow-[0_0_8px_currentColor]`} />
-                            ))}
-                        </div>
-                        {/* Shine Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none mix-blend-overlay" />
-                   </div>
-
-                   {/* Underglow Engine */}
-                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-3 bg-green-500/60 blur-xl rounded-full animate-pulse z-0" />
-              </div>
-          </div>
-      )}
-
-      {/* Ambient Ships */}
-      {ships.map((ship) => (
-        <div 
-            key={ship.id}
-            data-id={ship.id}
-            className={ship.wrapperClass}
-            style={ship.wrapperStyle}
-        >
-            <div className={ship.innerClass} style={ship.innerStyle} />
-        </div>
-      ))}
-
-      {/* 3D Mechanical Base System */}
-      <div className="absolute top-[-10%] right-[-10%] w-[900px] h-[900px]" style={{ perspective: '1200px' }}>
-         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
-             
-             {/* SHOCKWAVES (Radiating from behind) */}
-             {shockwaves.map(id => (
+      {/* SPACE SPECIFIC EFFECTS */}
+      {sceneMode === 'space' && (
+        <>
+            {/* Shooting Star */}
+            {shootingStar && (
                 <div 
-                    key={id}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border-[12px] border-cyan-200/80 shadow-[0_0_100px_#22d3ee] z-0 pointer-events-none animate-shockwave"
-                    style={{ transformStyle: 'preserve-3d', transform: 'translate(-50%, -50%) translateZ(-50px)' }}
+                    className="absolute h-[2px] w-[200px] bg-gradient-to-r from-transparent via-white to-transparent z-10"
+                    style={{
+                        top: shootingStar.top,
+                        left: shootingStar.left,
+                        transform: `rotate(${shootingStar.angle}deg)`,
+                        animation: `shootingStar ${shootingStar.duration} linear forwards`,
+                        boxShadow: '0 0 10px rgba(255,255,255,0.8)'
+                    }}
                 />
-             ))}
+            )}
 
-             {/* The Mechanical Base (Planet) - Face Camera directly (no tilt) to look round */}
-             <div 
-                  className={`
-                      absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full 
-                      overflow-hidden transition-all duration-300 ease-out
-                      ${isGlowing 
-                          ? 'shadow-[0_0_200px_rgba(34,211,238,0.95)] border-4 border-white scale-105 brightness-150' 
-                          : 'shadow-[0_0_100px_rgba(0,0,0,1)] border-0 border-transparent scale-100 brightness-100'}
-                      bg-slate-900
-                  `}
-                  style={{ transform: 'translate(-50%, -50%) translateZ(0)' }}
-             >
-                {/* Glow Overlay */}
-                <div className={`absolute inset-0 bg-white/40 transition-opacity duration-300 z-50 pointer-events-none mix-blend-screen ${isGlowing ? 'opacity-100' : 'opacity-0'}`} />
-
-                {/* Metallic Texture Base - Rotating */}
-                <div className="absolute inset-0 bg-[conic-gradient(from_45deg,#1e293b,#334155,#0f172a,#334155,#1e293b)] animate-[spin_120s_linear_infinite]" />
-                
-                {/* Tech Grid Lines (Paneling) */}
-                <div className="absolute inset-0 opacity-20" 
-                     style={{ 
-                         backgroundImage: `
-                             repeating-linear-gradient(0deg, transparent, transparent 19px, #38bdf8 20px),
-                             repeating-linear-gradient(90deg, transparent, transparent 19px, #38bdf8 20px)
-                         ` 
-                     }} 
-                />
-
-                {/* Random Base Lights */}
-                <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-red-500 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
-                <div className="absolute bottom-1/3 right-1/4 w-3 h-3 bg-cyan-400 rounded-full blur-[2px] animate-pulse" />
-                <div className="absolute top-1/2 left-1/2 w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/5 bg-white/5 backdrop-blur-[1px]" />
-                
-                {/* Core Reactor Glow */}
-                <div className="absolute top-[60%] left-[30%] w-16 h-16 bg-cyan-500/30 rounded-full blur-xl animate-pulse" />
-
-                {/* 3D Shading Overlay (Base) */}
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1)_0%,rgba(0,0,0,0.5)_50%,rgba(0,0,0,0.95)_100%)]" />
-
-                {/* NEW: Strong Key Light from Top Left (Lens Flare direction - Compliment Colors) */}
-                {/* Adds a cool cyan/white highlight to the top left rim */}
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_15%_15%,rgba(220,245,255,0.25)_0%,rgba(100,200,255,0.1)_30%,transparent_65%)] z-10" />
-
-                {/* Atmosphere Shield */}
-                <div className="absolute inset-0 rounded-full shadow-[inset_0_0_30px_rgba(56,189,248,0.3)] border border-cyan-500/20" />
-             </div>
-
-             {/* ORBITAL PLANE (Tilted Ring & Moon System) */}
-             <div className="absolute w-full h-full flex items-center justify-center animate-orbit-wobble" 
-                  style={{ 
-                      transformStyle: 'preserve-3d', 
-                  }}
-             >
-                 {/* The Surveillance Moon - Orbiting on the Plane */}
-                 <div className="absolute w-[580px] h-[580px] flex items-center justify-center" 
-                      style={{ transformStyle: 'preserve-3d' }}
-                 >
-                     {/* Moon Orbit Animation - Counter Clockwise (Reverse) - 20s (FASTER) */}
-                     <div className="absolute w-full h-full" style={{ transformStyle: 'preserve-3d', animation: 'spin 20s linear infinite reverse' }}>
-                        
-                        {/* 1. Positioning Wrapper (Fixed right side of ring) */}
-                        <div className="absolute top-1/2 right-0 -mt-4 -mr-4 w-8 h-8 flex items-center justify-center"
-                             style={{ transformStyle: 'preserve-3d' }}
-                        >
-                             {/* 2. Counter-Rotation Wrapper (Spins normal to cancel parent reverse spin) */}
-                             {/* This locks the moon's local orientation relative to the PLANE */}
-                             <div className="w-full h-full flex items-center justify-center"
-                                  style={{ 
-                                      animation: 'spin 20s linear infinite', 
-                                      transformStyle: 'preserve-3d' 
-                                  }}
-                             >
-                                 {/* 3. Orientation Correction (Static Transform) */}
-                                 {/* Cancel Plane Tilt (RX 76, RZ -10) -> (RZ 10, RX -76) to face Camera (World Z) */}
-                                 <div className="w-full h-full rounded-full shadow-[0_0_15px_rgba(255,255,255,0.3)] bg-gray-200"
-                                      style={{
-                                          transform: 'rotateZ(10deg) rotateX(-76deg)',
-                                          transformStyle: 'preserve-3d'
-                                      }}
-                                 >
-                                      {/* Red Eye / Sensor */}
-                                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_5px_red] animate-pulse z-10" />
-                                      
-                                      {/* Moon Texture - 3D Sphere shading with Light Source Highlight */}
-                                      {/* Updated to cooler tones (blueish-white) at top-left to match flare */}
-                                      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_20%_20%,#f0f9ff_0%,#bae6fd_20%,#475569_60%,#0f172a_100%)]" />
-                                 </div>
-                             </div>
+            {/* UFO Flyby */}
+            {ufoActive && ufoConfig && (
+                <div 
+                    className={`absolute z-20 ${ufoConfig.type === 'return' ? 'animate-ufo-return' : 'animate-ufo-flyby'}`}
+                    style={{
+                        '--ufo-start-y': `${ufoConfig.startY}vh`,
+                        '--ufo-end-y': `${ufoConfig.endY}vh`,
+                    } as React.CSSProperties}
+                >
+                    <div className="relative w-28 h-8">
+                        {/* ROTATING RING OF LIGHTS */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 flex items-center justify-center pointer-events-none z-10">
+                            <div className="w-full h-full" style={{ transform: 'rotateX(80deg)' }}>
+                                <div className="w-full h-full rounded-full border border-cyan-500/30 animate-[spin_4s_linear_infinite]">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_10px_white]" />
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_10px_red]" />
+                                    <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_10px_green]" />
+                                    <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_10px_blue]" />
+                                </div>
+                            </div>
                         </div>
 
-                     </div>
-                 </div>
+                        {/* Glass Dome */}
+                        <div className="absolute top-[-8px] left-1/2 -translate-x-1/2 w-12 h-5 bg-cyan-200/40 rounded-t-full border border-white/30 backdrop-blur-[1px] overflow-hidden z-20">
+                            {/* THE ALIEN DRIVER */}
+                            <div className="absolute bottom-[1px] left-1/2 -translate-x-1/2 w-5 h-5 flex flex-col items-center justify-end animate-pulse" style={{ animationDuration: '3s' }}>
+                                {/* Head */}
+                                <div className="w-2.5 h-3 bg-[#4ade80] rounded-[50%_50%_70%_70%] shadow-[0_0_3px_#22c55e] relative z-20">
+                                    <div className="absolute top-[35%] left-[0px] w-1.5 h-1.5 bg-black rounded-[60%_40%_40%_40%] -rotate-[30deg] shadow-[inset_1px_1px_1px_rgba(255,255,255,0.6)]" />
+                                    <div className="absolute top-[35%] right-[0px] w-1.5 h-1.5 bg-black rounded-[40%_60%_40%_40%] rotate-[30deg] shadow-[inset_-1px_1px_1px_rgba(255,255,255,0.6)]" />
+                                </div>
+                                <div className="w-0.5 h-1 bg-[#4ade80] -mt-0.5 z-10" />
+                                <div className="w-4 h-1.5 bg-green-700 rounded-t-full -mt-0.5 z-10" />
+                            </div>
+                        </div>
 
-                 {/* The Data Ring */}
-                 <div className="absolute w-[800px] h-[800px] flex items-center justify-center" 
-                      style={{ transformStyle: 'preserve-3d' }}
-                 >
-                     {/* STATIC LIGHTING OVERLAY for Ring (Compliment light source) */}
-                     {/* Simulates light hitting the top-left of the metallic ring structure */}
-                     <div className="absolute inset-[-50px] rounded-full bg-gradient-to-br from-cyan-300/10 via-transparent to-transparent opacity-40 z-0 pointer-events-none" style={{ transform: 'rotate(-45deg)' }} />
-
-                     {/* Ring Spin Animation - Clockwise */}
-                     <div className="absolute w-full h-full rounded-full"
-                          style={{ 
-                              transformStyle: 'preserve-3d', 
-                              animation: 'spin 60s linear infinite' 
-                          }}
-                     >
-                         {/* Tech Ring Visuals */}
-                         <div className="absolute inset-0 rounded-full border-[2px] border-cyan-500/10 border-dashed" />
-                         <div className="absolute inset-[40px] rounded-full border-[1px] border-cyan-500/5" />
-                         
-                         {/* Scanning Beam on Ring */}
-                         <div className="absolute top-0 left-1/2 w-[2px] h-[50%] bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent origin-bottom animate-spin" style={{ animationDuration: '10s' }} />
-
-                         {/* Numbers */}
-                         {ringNumbers.map((item, i) => (
-                             <div 
-                                key={i}
-                                className={`absolute top-1/2 left-1/2 flex items-center justify-center ${item.colorClass}`}
-                                style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    // Position on ring
-                                    transform: `rotateZ(${item.angleDeg}deg) translateY(-${item.radius}px) rotateX(-90deg) rotateY(180deg)`
+                        {/* VOLUMETRIC BEAMS LAYER */}
+                        <div className="absolute top-[50%] -left-[10%] w-[120%] h-40 overflow-hidden z-0" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+                                <div className="w-[200%] h-full flex gap-2 animate-ufo-lights-spin pl-1">
+                                    {Array.from({length: 20}).map((_, i) => (
+                                        <div key={i} className="w-3 relative flex justify-center">
+                                            <div className={`w-8 h-32 bg-gradient-to-b ${i % 3 === 0 ? 'from-red-500/40' : (i % 3 === 1 ? 'from-green-500/40' : 'from-blue-500/40')} to-transparent blur-md origin-top transform -rotate-6`} />
+                                        </div>
+                                    ))}
+                                </div>
+                        </div>
+                        
+                        {/* METALLIC BODY */}
+                        <div 
+                                className="absolute inset-0 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-800 shadow-2xl border border-gray-500 flex items-center z-20"
+                                style={{ 
+                                    clipPath: 'polygon(15% 0%, 85% 0%, 100% 30%, 100% 70%, 85% 100%, 15% 100%, 0% 70%, 0% 30%)'
                                 }}
-                             >
-                                 <span className="text-xl font-black font-mono tracking-tighter" style={{ textShadow: '0 0 5px rgba(0,0,0,0.8)' }}>
-                                     {item.num}
-                                 </span>
-                             </div>
-                         ))}
-                     </div>
-                 </div>
-             </div>
-         </div>
-      </div>
+                        >
+                                <div className="w-[200%] h-1.5 flex gap-3 animate-ufo-lights-spin mt-0.5">
+                                    {Array.from({length: 20}).map((_, i) => (
+                                        <div key={i} className={`w-2 h-2 rounded-full ${i % 3 === 0 ? 'bg-red-500' : (i % 3 === 1 ? 'bg-green-500' : 'bg-blue-500')} shadow-[0_0_8px_currentColor]`} />
+                                    ))}
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none mix-blend-overlay" />
+                        </div>
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-3 bg-green-500/60 blur-xl rounded-full animate-pulse z-0" />
+                    </div>
+                </div>
+            )}
 
-      {/* Lens Flare / Warzone Haze - Enhanced with Top-Left Purple Lens Flare */}
-      <div 
-        className="absolute inset-0 z-30 pointer-events-none mix-blend-screen overflow-hidden"
-        style={{
-            maskImage: 'linear-gradient(to right, black 0%, black 30%, transparent 85%)',
-            WebkitMaskImage: 'linear-gradient(to right, black 0%, black 30%, transparent 85%)'
-        }}
-      >
-          {/* Main Flare Source (Top Left) - VIBRANT PURPLE & VIOLET - INCREASED INTENSITY */}
-          <div className="absolute -top-[15%] -left-[15%] w-[70%] h-[70%] bg-[radial-gradient(circle_at_center,rgba(168,85,247,1)_0%,rgba(139,92,246,0.7)_30%,rgba(0,0,0,0)_70%)] blur-[90px] animate-pulse" style={{ animationDuration: '6s' }} />
-          
-          {/* Core Hotspot for Lens Flare - To make it noticeable */}
-          <div className="absolute top-[5%] left-[5%] w-[15%] h-[15%] bg-white/60 blur-[60px] animate-pulse" style={{ animationDuration: '3s' }} />
-          
-          {/* Volumetric Haze / Caustics in the Light */}
-          <div className="absolute top-0 left-0 w-[50%] h-[50%] opacity-40 mix-blend-overlay animate-float">
-               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/20 via-transparent to-transparent blur-3xl" />
-          </div>
+            {/* Ambient Ships */}
+            {ships.map((ship) => (
+                <div 
+                    key={ship.id}
+                    data-id={ship.id}
+                    className={ship.wrapperClass}
+                    style={ship.wrapperStyle}
+                >
+                    <div className={ship.innerClass} style={ship.innerStyle} />
+                </div>
+            ))}
 
-          {/* Flare Artifacts (Projecting towards center) */}
-          <div className="absolute top-[15%] left-[15%] w-32 h-32 rounded-full bg-fuchsia-500/20 blur-2xl" />
-          <div className="absolute top-[25%] left-[25%] w-16 h-16 rounded-full bg-violet-400/30 blur-xl" />
-          <div className="absolute top-[40%] left-[40%] w-8 h-8 rounded-full bg-purple-300/40 blur-md" />
+            {/* 3D Mechanical Base System */}
+            <div className="absolute top-[-10%] right-[-10%] w-[900px] h-[900px]" style={{ perspective: '1200px' }}>
+                <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
+                    
+                    {/* SHOCKWAVES */}
+                    {shockwaves.map(id => (
+                        <div 
+                            key={id}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border-[12px] border-cyan-200/80 shadow-[0_0_100px_#22d3ee] z-0 pointer-events-none animate-shockwave"
+                            style={{ transformStyle: 'preserve-3d', transform: 'translate(-50%, -50%) translateZ(-50px)' }}
+                        />
+                    ))}
 
-          {/* Existing Haze */}
-          <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(147,51,234,0.2)_0%,transparent_70%)] blur-[100px]" />
-          
-          {/* Subtle Scanlines */}
-          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(transparent 50%, rgba(0,0,0,0.5) 50%)', backgroundSize: '100% 4px' }} />
-      </div>
+                    {/* The Mechanical Base (Planet) */}
+                    <div 
+                        className={`
+                            absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full 
+                            overflow-hidden transition-all duration-300 ease-out
+                            ${isGlowing 
+                                ? 'shadow-[0_0_200px_rgba(34,211,238,0.95)] border-4 border-white scale-105 brightness-150' 
+                                : 'shadow-[0_0_100px_rgba(0,0,0,1)] border-0 border-transparent scale-100 brightness-100'}
+                            bg-slate-900
+                        `}
+                        style={{ transform: 'translate(-50%, -50%) translateZ(0)' }}
+                    >
+                        {/* Glow Overlay */}
+                        <div className={`absolute inset-0 bg-white/40 transition-opacity duration-300 z-50 pointer-events-none mix-blend-screen ${isGlowing ? 'opacity-100' : 'opacity-0'}`} />
+
+                        {/* Metallic Texture Base - Rotating */}
+                        <div className="absolute inset-0 bg-[conic-gradient(from_45deg,#1e293b,#334155,#0f172a,#334155,#1e293b)] animate-[spin_120s_linear_infinite]" />
+                        
+                        {/* Tech Grid Lines (Paneling) */}
+                        <div className="absolute inset-0 opacity-20" 
+                            style={{ 
+                                backgroundImage: `
+                                    repeating-linear-gradient(0deg, transparent, transparent 19px, #38bdf8 20px),
+                                    repeating-linear-gradient(90deg, transparent, transparent 19px, #38bdf8 20px)
+                                ` 
+                            }} 
+                        />
+
+                        {/* Random Base Lights */}
+                        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-red-500 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+                        <div className="absolute bottom-1/3 right-1/4 w-3 h-3 bg-cyan-400 rounded-full blur-[2px] animate-pulse" />
+                        <div className="absolute top-1/2 left-1/2 w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/5 bg-white/5 backdrop-blur-[1px]" />
+                        
+                        {/* Core Reactor Glow */}
+                        <div className="absolute top-[60%] left-[30%] w-16 h-16 bg-cyan-500/30 rounded-full blur-xl animate-pulse" />
+
+                        {/* 3D Shading Overlay (Base) */}
+                        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1)_0%,rgba(0,0,0,0.5)_50%,rgba(0,0,0,0.95)_100%)]" />
+
+                        {/* Key Light */}
+                        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_15%_15%,rgba(220,245,255,0.25)_0%,rgba(100,200,255,0.1)_30%,transparent_65%)] z-10" />
+
+                        {/* Atmosphere Shield */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_30px_rgba(56,189,248,0.3)] border border-cyan-500/20" />
+                    </div>
+
+                    {/* ORBITAL PLANE (Tilted Ring & Moon System) */}
+                    <div className="absolute w-full h-full flex items-center justify-center animate-orbit-wobble" 
+                        style={{ 
+                            transformStyle: 'preserve-3d', 
+                        }}
+                    >
+                        {/* The Surveillance Moon - Orbiting on the Plane */}
+                        <div className="absolute w-[580px] h-[580px] flex items-center justify-center" 
+                            style={{ transformStyle: 'preserve-3d' }}
+                        >
+                            <div className="absolute w-full h-full" style={{ transformStyle: 'preserve-3d', animation: 'spin 20s linear infinite reverse' }}>
+                                <div className="absolute top-1/2 right-0 -mt-4 -mr-4 w-8 h-8 flex items-center justify-center"
+                                    style={{ transformStyle: 'preserve-3d' }}
+                                >
+                                    <div className="w-full h-full flex items-center justify-center"
+                                        style={{ 
+                                            animation: 'spin 20s linear infinite', 
+                                            transformStyle: 'preserve-3d' 
+                                        }}
+                                    >
+                                        <div className="w-full h-full rounded-full shadow-[0_0_15px_rgba(255,255,255,0.3)] bg-gray-200"
+                                            style={{
+                                                transform: 'rotateZ(10deg) rotateX(-76deg)',
+                                                transformStyle: 'preserve-3d'
+                                            }}
+                                        >
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_5px_red] animate-pulse z-10" />
+                                            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_20%_20%,#f0f9ff_0%,#bae6fd_20%,#475569_60%,#0f172a_100%)]" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* The Data Ring */}
+                        <div className="absolute w-[800px] h-[800px] flex items-center justify-center" 
+                            style={{ transformStyle: 'preserve-3d' }}
+                        >
+                            <div className="absolute inset-[-50px] rounded-full bg-gradient-to-br from-cyan-300/10 via-transparent to-transparent opacity-40 z-0 pointer-events-none" style={{ transform: 'rotate(-45deg)' }} />
+
+                            <div className="absolute w-full h-full rounded-full"
+                                style={{ 
+                                    transformStyle: 'preserve-3d', 
+                                    animation: 'spin 60s linear infinite' 
+                                }}
+                            >
+                                <div className="absolute inset-0 rounded-full border-[2px] border-cyan-500/10 border-dashed" />
+                                <div className="absolute inset-[40px] rounded-full border-[1px] border-cyan-500/5" />
+                                <div className="absolute top-0 left-1/2 w-[2px] h-[50%] bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent origin-bottom animate-spin" style={{ animationDuration: '10s' }} />
+
+                                {ringNumbers.map((item, i) => (
+                                    <div 
+                                        key={i}
+                                        className={`absolute top-1/2 left-1/2 flex items-center justify-center ${item.colorClass}`}
+                                        style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            // Position on ring
+                                            transform: `rotateZ(${item.angleDeg}deg) translateY(-${item.radius}px) rotateX(-90deg) rotateY(180deg)`
+                                        }}
+                                    >
+                                        <span className="text-xl font-black font-mono tracking-tighter" style={{ textShadow: '0 0 5px rgba(0,0,0,0.8)' }}>
+                                            {item.num}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Lens Flare / Warzone Haze */}
+            <div 
+                className="absolute inset-0 z-30 pointer-events-none mix-blend-screen overflow-hidden"
+                style={{
+                    maskImage: 'linear-gradient(to right, black 0%, black 30%, transparent 85%)',
+                    WebkitMaskImage: 'linear-gradient(to right, black 0%, black 30%, transparent 85%)'
+                }}
+            >
+                <div className="absolute -top-[15%] -left-[15%] w-[70%] h-[70%] bg-[radial-gradient(circle_at_center,rgba(168,85,247,1)_0%,rgba(139,92,246,0.7)_30%,rgba(0,0,0,0)_70%)] blur-[90px] animate-pulse" style={{ animationDuration: '6s' }} />
+                <div className="absolute top-[5%] left-[5%] w-[15%] h-[15%] bg-white/60 blur-[60px] animate-pulse" style={{ animationDuration: '3s' }} />
+                <div className="absolute top-0 left-0 w-[50%] h-[50%] opacity-40 mix-blend-overlay animate-float">
+                    <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/20 via-transparent to-transparent blur-3xl" />
+                </div>
+                <div className="absolute top-[15%] left-[15%] w-32 h-32 rounded-full bg-fuchsia-500/20 blur-2xl" />
+                <div className="absolute top-[25%] left-[25%] w-16 h-16 rounded-full bg-violet-400/30 blur-xl" />
+                <div className="absolute top-[40%] left-[40%] w-8 h-8 rounded-full bg-purple-300/40 blur-md" />
+                <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-[radial-gradient(circle,rgba(147,51,234,0.2)_0%,transparent_70%)] blur-[100px]" />
+                <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(transparent 50%, rgba(0,0,0,0.5) 50%)', backgroundSize: '100% 4px' }} />
+            </div>
+        </>
+      )}
+
+      {/* BRAIN MODE SPECIFIC EFFECTS */}
+      {sceneMode === 'brain' && (
+           <div className="absolute inset-0 z-20 pointer-events-none mix-blend-overlay opacity-30">
+                {/* Additional overlay for Brain Mode integration if needed */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(232,121,249,0.1)_0%,transparent_60%)]" />
+           </div>
+      )}
 
     </div>
   );
@@ -643,6 +773,7 @@ function App() {
   const [stopLoss, setStopLoss] = useState(0);
   const [takeProfit, setTakeProfit] = useState(2000);
   const [strategyName, setStrategyName] = useState("Strategy 1");
+  const [sceneMode, setSceneMode] = useState<'space' | 'brain'>('space');
   
   // Simulation Controls
   const [simSpeed, setSimSpeed] = useState<SimSpeed>('fast');
@@ -1386,6 +1517,14 @@ function App() {
             .animate-float {
                 animation: float 20s linear infinite;
             }
+            @keyframes driftSlow {
+                0% { transform: scale(1.05) translate(0, 0); }
+                50% { transform: scale(1.1) translate(-2%, -2%); }
+                100% { transform: scale(1.05) translate(0, 0); }
+            }
+            .animate-drift-slow {
+                animation: driftSlow 30s ease-in-out infinite;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1667,15 +1806,32 @@ function App() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-black text-gray-200 font-sans select-none relative" onMouseUp={(e) => handleMouseUp(e.nativeEvent)}>
-        <BackgroundEffects glowTrigger={planetGlowTrigger} />
+        <BackgroundEffects glowTrigger={planetGlowTrigger} sceneMode={sceneMode} />
 
         {/* TOP TOOLBAR (Unified Config - Always Visible) */}
-        <div className="absolute top-0 left-0 right-0 z-50 h-16 bg-gray-900/80 backdrop-blur-md border-b border-gray-700 flex items-center justify-between px-6 shadow-2xl">
+        <div className="absolute top-0 left-0 right-0 z-50 min-h-[4rem] h-auto py-1 bg-gray-900/80 backdrop-blur-md border-b border-gray-700 flex items-center justify-between px-6 shadow-2xl">
             {/* Left: Title & Strategy Name */}
             <div className="flex items-center gap-6">
-                <h1 className="text-2xl sm:text-4xl font-black italic tracking-tighter animate-text-shimmer select-none whitespace-nowrap hidden sm:block transform hover:scale-105 transition-transform duration-300">
-                    Soulman's Strategy Builder
-                </h1>
+                <div className="flex flex-col items-start mr-4">
+                    <h1 className="text-2xl sm:text-4xl font-black italic tracking-tighter animate-text-shimmer select-none whitespace-nowrap hidden sm:block transform hover:scale-105 transition-transform duration-300 leading-none">
+                        Soulman's Strategy Builder
+                    </h1>
+                    {/* Scene Toggle */}
+                    <div className="flex items-center gap-1 mt-1 bg-gray-800/50 rounded-full p-0.5 border border-gray-700/50">
+                       <button 
+                           onClick={() => setSceneMode('space')} 
+                           className={`text-[9px] font-bold uppercase px-3 py-0.5 rounded-full transition-all duration-300 ${sceneMode === 'space' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                           Space Scene
+                       </button>
+                       <button 
+                           onClick={() => setSceneMode('brain')} 
+                           className={`text-[9px] font-bold uppercase px-3 py-0.5 rounded-full transition-all duration-300 ${sceneMode === 'brain' ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/50 shadow-[0_0_10px_rgba(232,121,249,0.3)]' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                           Brain Mode
+                       </button>
+                    </div>
+                </div>
                 
                 <div className="h-8 w-[1px] bg-gray-700 hidden sm:block" />
                 
@@ -1799,6 +1955,7 @@ function App() {
                             onMoveNode={handleMoveNode}
                             canvasOffset={canvasOffset}
                             zoom={zoom}
+                            sceneMode={sceneMode}
                         />
                     </div>
                 </>
